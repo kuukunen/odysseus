@@ -10,7 +10,6 @@ import shlex
 import shutil
 import subprocess
 import uuid
-import tempfile
 from collections import namedtuple
 from pathlib import Path
 from typing import Dict, Any
@@ -396,7 +395,8 @@ def _find_line_break(buf):
 EXEC_TIMEOUT = 30  # seconds — shorter than agent's 60s
 STREAM_TIMEOUT = 120  # default for short commands
 MAX_OUTPUT = 200_000  # truncate limit
-TMUX_LOG_DIR = Path(tempfile.gettempdir()) / "odysseus-tmux"
+from src.constants import DATA_DIR as _DATA_DIR
+TMUX_LOG_DIR = Path(_DATA_DIR) / "logs" / "shell"
 PTY_UNSUPPORTED_ERROR = "pty_unsupported"
 
 
@@ -711,11 +711,12 @@ async def _generate_tmux(cmd: str, request: Request):
 
     yield f"data: {json.dumps({'exit_code': exit_code})}\n\n"
 
-    # Clean up log file
-    try:
-        log_path.unlink(missing_ok=True)
-    except Exception:
-        pass
+    # Keep log files for failed jobs; clean up successful ones.
+    if exit_code == 0:
+        try:
+            log_path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 async def _generate_win_detached(cmd: str, request: Request):
@@ -807,7 +808,9 @@ async def _generate_win_detached(cmd: str, request: Request):
         await asyncio.sleep(1.0)
 
     yield f"data: {json.dumps({'exit_code': exit_code})}\n\n"
-    for p in (log_path, exit_path, script_path):
+    # Keep log files for failed jobs; clean up successful ones.
+    cleanup = (log_path, exit_path, script_path) if exit_code == 0 else (exit_path, script_path)
+    for p in cleanup:
         try:
             p.unlink(missing_ok=True)
         except Exception:
