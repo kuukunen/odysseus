@@ -250,6 +250,13 @@ def startup_all(app: Any):
             call_register(ep.name, app)
     except Exception:
         pass
+    # Wire plugin-registered tools into TOOL_TAGS so the agent dispatcher
+    # recognizes them as valid tool calls.
+    try:
+        from src.agent_tools import _register_plugin_tools
+        _register_plugin_tools()
+    except Exception as e:
+        logger.error("Failed to call _register_plugin_tools: %s", e, exc_info=True)
 
 
 def shutdown_all():

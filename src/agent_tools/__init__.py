@@ -104,6 +104,32 @@ TOOL_TAGS = {"bash", "python", "web_search", "web_fetch", "read_file", "write_fi
              # there's no named tool wrapper for the action.
              "app_api"}
 
+def _register_plugin_tools():
+    """Add plugin-registered tool names to TOOL_TAGS and TOOL_SECTIONS."""
+    try:
+        from src.plugin_host import get_all_plugin_tools
+        import src.agent_loop as _al
+        added = False
+        for name, entry in get_all_plugin_tools().items():
+            TOOL_TAGS.add(name)
+            logger.info("Plugin tool '%s' added to TOOL_TAGS", name)
+            if name not in _al.TOOL_SECTIONS:
+                schema = entry.get("schema", {})
+                section = schema.get("prompt_section")
+                if not section:
+                    desc = schema.get("description", name)
+                    section = f"- ```{name}``` — {desc}"
+                _al.TOOL_SECTIONS[name] = section
+                added = True
+        if added:
+            _al.AGENT_SYSTEM_PROMPT = _al._assemble_prompt(set(_al.TOOL_SECTIONS.keys()))
+            _al._cached_base_prompt = None
+            _al._cached_base_prompt_key = None
+            from src.tool_parsing import _recompile_tool_block_re
+            _recompile_tool_block_re()
+    except Exception as e:
+        logger.error("Failed to register plugin tools: %s", e, exc_info=True)
+
 ToolBlock = namedtuple("ToolBlock", ["tool_type", "content"])
 
 # ---------------------------------------------------------------------------

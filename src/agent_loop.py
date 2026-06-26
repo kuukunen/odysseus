@@ -271,6 +271,11 @@ _DOMAIN_RULES = {
 ## Integration/API rules
 - To query or control a configured service integration (Home Assistant, Miniflux, Gitea, Linkding, Jellyfin, or any other registered service), use `api_call` with the integration name, HTTP method, path, and optional JSON body.
 - Do not use shell, curl, or `app_api` to reach a user's connected integration when `api_call` is available.""",
+    "image": """\
+## Image generation rules
+- Use `comfyui_generate` for image generation, editing, and upscaling requests.
+- The tool auto-selects the best workflow: text-to-image (no input image), img2img (input + prompt), edit (input + edit instruction), upscale (input + "upscale").
+- Do not describe images textually or suggest external tools when `comfyui_generate` is available.""",
 }
 
 _DOMAIN_TOOL_MAP = {
@@ -285,6 +290,7 @@ _DOMAIN_TOOL_MAP = {
     "settings": {"manage_settings", "manage_endpoints", "manage_mcp", "manage_webhooks", "manage_tokens", "app_api"},
     "contacts": {"resolve_contact", "manage_contact"},
     "integrations": {"api_call"},
+    "image": {"comfyui_generate", "generate_image", "edit_image"},
 }
 
 def _domain_rules_for_tools(tool_names: set) -> list[str]:
@@ -933,6 +939,11 @@ def _classify_agent_request(messages: List[Dict], last_user: str) -> Dict[str, o
     if has(r"\bapi[ _]call\b", r"\bintegrations?\b",
            r"\b(?:home ?assistant|miniflux|gitea|linkding|jellyfin)\b"):
         domains.add("integrations")
+    if has(r"\b(generate|create|make|draw|paint|render)\b.{0,40}\b(image|picture|photo|illustration|artwork)\b",
+           r"\b(image|picture|photo)\b.{0,40}\b(generat|creat|edit|upscal|enhanc)",
+           r"\b(upscale|enhance)\b.{0,20}\b(image|picture|photo)\b",
+           r"\bimagine\b", r"\bcomfyui\b", r"\bflux\b"):
+        domains.add("image")
 
     low_signal = not continuation and not domains
     return {
@@ -2544,6 +2555,12 @@ async def stream_agent_loop(
                     if s.get("function", {}).get("name") not in _ADMIN_SCHEMA_NAMES
                 ]
                 all_tool_schemas = base_schemas + mcp_schemas
+            # Append plugin-registered tool schemas
+            try:
+                from src.plugin_host import get_plugin_tool_schemas
+                all_tool_schemas = all_tool_schemas + get_plugin_tool_schemas()
+            except Exception:
+                pass
             if disabled_tools:
                 all_tool_schemas = [
                     t for t in all_tool_schemas
@@ -2551,7 +2568,9 @@ async def stream_agent_loop(
                     and t.get("name") not in disabled_tools
                 ]
         else:
-            # Local: only MCP schemas when message suggests MCP tool usage
+            # Local: only MCP schemas when message suggests MCP tool usage.
+            # Plugin tools are NOT sent as native schemas for local models —
+            # they rely on text-based fenced-block syntax via TOOL_SECTIONS.
             _last_content = _last_user.lower()
             _wants_mcp = any(kw in _last_content for kw in _MCP_KEYWORDS)
             all_tool_schemas = mcp_schemas if (_wants_mcp and mcp_schemas) else []

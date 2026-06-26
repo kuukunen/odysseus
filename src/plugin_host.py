@@ -120,6 +120,32 @@ def get_registered_tools(plugin_name: str) -> dict[str, Any]:
     return dict(_tools.get(plugin_name, {}))
 
 
+def get_all_plugin_tools() -> dict[str, dict[str, Any]]:
+    """Return all plugin-registered tools as {tool_name: {schema, fn}}."""
+    merged: dict[str, dict[str, Any]] = {}
+    for plugin_tools in _tools.values():
+        merged.update(plugin_tools)
+    return merged
+
+
+def get_plugin_tool_schemas() -> list[dict[str, Any]]:
+    """Return OpenAI-format function tool schemas for all plugin tools."""
+    schemas = []
+    for tool_name, entry in get_all_plugin_tools().items():
+        raw = entry.get("schema", {})
+        schemas.append({
+            "type": "function",
+            "function": {
+                "name": tool_name,
+                "description": raw.get("description", tool_name),
+                "parameters": {
+                    k: v for k, v in raw.items() if k != "description"
+                },
+            },
+        })
+    return schemas
+
+
 def unregister_all(plugin_name: str) -> None:
     """Remove all registrations for a plugin.  Called on disable/uninstall."""
     for router in _routers.pop(plugin_name, []):

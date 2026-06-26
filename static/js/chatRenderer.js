@@ -558,7 +558,7 @@ const IMAGE_PRICING = {
 export function shortModel(name) {
   if (!name) return '...';
   if (typeof name !== 'string') name = String(name);
-  let short = name.split('/').pop();
+  let short = name.replace(/\\/g, '/').split('/').pop();
   // Strip .gguf extension
   short = short.replace(/\.gguf$/i, '');
   // Strip quantization suffixes (Q4_K_M, Q8_0, etc.) and shard numbers

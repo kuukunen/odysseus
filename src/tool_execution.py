@@ -903,8 +903,36 @@ async def _execute_tool_block_impl(
             desc = f"mcp: {tool}"
             result = {"error": "MCP manager not available", "exit_code": 1}
     else:
-        desc = f"unknown: {tool}"
-        result = {"error": f"Unknown tool type: {tool}", "exit_code": 1}
+        # Plugin tool dispatch — check tools registered via host.add_tool()
+        from src.plugin_host import get_all_plugin_tools
+        _plugin_tools = get_all_plugin_tools()
+        if tool in _plugin_tools:
+            desc = f"plugin: {tool}"
+            fn = _plugin_tools[tool]["fn"]
+            try:
+                raw = (content or "").strip()
+                try:
+                    kwargs = json.loads(raw) if raw else {}
+                except (ValueError, TypeError):
+                    kwargs = {"content": raw}
+                import asyncio
+                if asyncio.iscoroutinefunction(fn):
+                    out = await fn(**kwargs)
+                else:
+                    loop = asyncio.get_event_loop()
+                    out = await loop.run_in_executor(None, lambda: fn(**kwargs))
+                if isinstance(out, str):
+                    result = {"output": out, "exit_code": 0}
+                elif isinstance(out, dict):
+                    result = out if "exit_code" in out else {**out, "exit_code": 0}
+                else:
+                    result = {"output": str(out), "exit_code": 0}
+            except Exception as e:
+                logger.error(f"Plugin tool {tool} failed: {e}")
+                result = {"error": f"{tool}: {e}", "exit_code": 1}
+        else:
+            desc = f"unknown: {tool}"
+            result = {"error": f"Unknown tool type: {tool}", "exit_code": 1}
 
     logger.info(f"Tool executed: {desc} -> exit_code={result.get('exit_code', 'n/a')}")
     return desc, result

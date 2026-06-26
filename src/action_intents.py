@@ -86,6 +86,11 @@ _ROUTING_PATTERNS: tuple[tuple[str, str, Pattern[str]], ...] = tuple(
         ("email", "check inbox request", r"\bcheck\s+(?:my\s+)?(?:email|inbox|mail)\b"),
         ("email", "unread email request", r"\bunread\s+(?:email|mail)s?\b"),
 
+        # Image generation requests.
+        ("image", "image generation request", rf"{_PLEASE}(?:generate|create|make|draw|paint|produce)\s+(?:an?\s+|me\s+an?\s+)?(?:image|picture|photo|illustration|artwork|drawing|painting)\b"),
+        ("image", "imagine prompt request", r"\b(?:imagine|visualize|render)\b.{{0,60}}\b(?:image|picture|scene|photo)\b"),
+        ("image", "image editing request", rf"{_PLEASE}(?:edit|modify|change|upscale|enhance)\s+(?:the\s+|this\s+)?(?:image|picture|photo)\b"),
+
         # UI/control-plane actions that should open panels or flip toggles.
         ("ui", "open/show panel request", rf"{_PLEASE}(?:open|show|bring\s+up)\s+(?:me\s+)?(?:my\s+|the\s+)?{_PANEL}\b"),
         ("ui", "tool or feature toggle request", r"\b(?:disable|enable|turn\s+(?:on|off))\s+(?:the\s+)?(?:shell|search|web|browser|documents?|memory|skills|images?|calendar|email|mail|research|incognito)\b"),

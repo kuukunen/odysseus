@@ -1,0 +1,13 @@
+{
+  "$schema": "../../odysseus-plugin.schema.json",
+  "name": "lily-branding",
+  "version": "1.0.0",
+  "entry_point": "lily_branding:register",
+  "odysseus_compat": ">=0.1.0",
+  "description": "Rebrand Odysseus as Lily — custom name, styles, and theming.",
+  "author": "aki",
+  "license": "MIT",
+  "capabilities": ["ui", "settings"],
+  "frontend": "static/frontend.js",
+  "styles": ["static/style.css"]
+}

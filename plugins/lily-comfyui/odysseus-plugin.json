@@ -1,0 +1,13 @@
+{
+  "$schema": "../../odysseus-plugin.schema.json",
+  "name": "lily-comfyui",
+  "version": "1.0.0",
+  "entry_point": "lily_comfyui:register",
+  "odysseus_compat": ">=0.1.0",
+  "description": "ComfyUI image generation — text2img, img2img, editing, upscaling via local Flux models.",
+  "author": "aki",
+  "license": "MIT",
+  "capabilities": ["tools", "routes", "ui"],
+  "frontend": "static/frontend.js",
+  "styles": ["static/style.css"]
+}

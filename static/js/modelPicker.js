@@ -239,7 +239,7 @@ function _initModelPickerDropdown() {
         seen.add(mid);
         result.push({
           mid,
-          display: (allDisplay[i] || mid).split('/').pop(),
+          display: (allDisplay[i] || mid).replace(/\\/g, '/').split('/').pop(),
           url: item.url,
           endpointId: item.endpoint_id,
           epName: item.endpoint_name || '',
@@ -373,7 +373,7 @@ function _initModelPickerDropdown() {
       const epSpan = document.createElement('span');
       epSpan.className = 'model-switch-ep';
       // Don't show endpoint name if it matches the model name (local self-hosted)
-      const _epDisplay = m.epName && !m.display.toLowerCase().includes(m.epName.toLowerCase().split('/').pop()) ? m.epName : '';
+      const _epDisplay = m.epName && !m.display.toLowerCase().includes(m.epName.toLowerCase().replace(/\\/g, '/').split('/').pop()) ? m.epName : '';
       epSpan.textContent = _epDisplay;
       row.appendChild(epSpan);
 
@@ -596,7 +596,7 @@ function _initModelPickerDropdown() {
       if (idx >= 0) {
         match = {
           mid: models[idx],
-          display: (displays[idx] || models[idx]).split('/').pop(),
+          display: (displays[idx] || models[idx]).replace(/\\/g, '/').split('/').pop(),
           url: item.url || detail.url || '',
           endpointId: item.endpoint_id || detail.endpointId || '',
           epName: item.endpoint_name || detail.endpointName || '',
@@ -608,7 +608,7 @@ function _initModelPickerDropdown() {
     if (!match && detail.modelId && detail.url) {
       match = {
         mid: detail.modelId,
-        display: String(detail.modelId).split('/').pop(),
+        display: String(detail.modelId).replace(/\\/g, '/').split('/').pop(),
         url: detail.url,
         endpointId: detail.endpointId || '',
         epName: detail.endpointName || '',
@@ -751,7 +751,7 @@ export function updateModelPicker() {
     _ensureDefaultPendingChat();
   }
 
-  const displayName = modelId ? modelId.split('/').pop() : 'Select model';
+  const displayName = modelId ? modelId.replace(/\\/g, '/').split('/').pop() : 'Select model';
   // The header indicator clips long names with ellipsis; show the full model
   // identifier on hover (#1982). No tooltip on the "Select model" placeholder.
   label.title = modelId || '';

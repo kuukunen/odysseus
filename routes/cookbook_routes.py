@@ -459,9 +459,8 @@ def setup_cookbook_routes() -> APIRouter:
             # all output to the log the poller reads. Paths handed to bash use
             # POSIX form + shell-quoting so drive paths / spaces survive.
             inner = TMUX_LOG_DIR / f"{session_id}_run.sh"
-            pp = shlex.quote(pid_path.as_posix())
             inner.write_text(
-                f"printf '%s\\n' \"$$\" > {pp}\n" + "\n".join(bash_lines) + "\n",
+                "\n".join(bash_lines) + "\n",
                 encoding="utf-8",
             )
             lp = shlex.quote(log_path.as_posix())

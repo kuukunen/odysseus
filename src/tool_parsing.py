@@ -25,6 +25,15 @@ _TOOL_BLOCK_RE = re.compile(
     re.IGNORECASE,
 )
 
+
+def _recompile_tool_block_re():
+    """Recompile _TOOL_BLOCK_RE after TOOL_TAGS has been modified (e.g. by plugins)."""
+    global _TOOL_BLOCK_RE
+    _TOOL_BLOCK_RE = re.compile(
+        r"```(" + "|".join(TOOL_TAGS) + r")\s*\n([\s\S]*?)```",
+        re.IGNORECASE,
+    )
+
 # Pattern 2: [TOOL_CALL] ... [/TOOL_CALL] blocks (some models use this format)
 # Matches: {tool => "shell", args => {--command "ls -la"}} etc.
 _TOOL_CALL_RE = re.compile(
@@ -547,6 +556,37 @@ def _parse_xml_invoke(inv_match) -> Optional[ToolBlock]:
     return function_call_to_tool_block(tool_name, json.dumps(params))
 
 
+def _parse_json_tool_call(body: str) -> Optional[ToolBlock]:
+    """Parse bare JSON inside <tool_call> tags (Qwen / OpenAI text format).
+
+    Many local models (Qwen2.5, Llama-3, Mistral) emit tool calls as:
+      <tool_call>{"name": "tool_name", "arguments": {"key": "value"}}</tool_call>
+    or the "function" variant:
+      <tool_call>{"name": "tool_name", "parameters": {"key": "value"}}</tool_call>
+    """
+    body = body.strip()
+    if not body.startswith("{"):
+        return None
+    try:
+        obj = json.loads(body)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(obj, dict):
+        return None
+    name = obj.get("name") or obj.get("function")
+    if not name or not isinstance(name, str):
+        return None
+    args = obj.get("arguments") or obj.get("parameters") or {}
+    if isinstance(args, str):
+        try:
+            args = json.loads(args)
+        except json.JSONDecodeError:
+            pass
+    args_str = json.dumps(args) if isinstance(args, dict) else str(args)
+    from src.tool_schemas import function_call_to_tool_block
+    return function_call_to_tool_block(name, args_str)
+
+
 def _parse_xml_direct_tool(tool_match) -> Optional[ToolBlock]:
     """Parse direct XML tool tags inside <tool_call>.
 
@@ -819,6 +859,12 @@ def parse_tool_blocks(text: str, skip_fenced: bool = False) -> List[ToolBlock]:
                     block = _parse_xml_direct_tool(direct)
                     if block:
                         blocks.append(block)
+            # Bare JSON inside <tool_call> (Qwen/OpenAI text format):
+            # <tool_call>{"name": "tool", "arguments": {...}}</tool_call>
+            if not blocks:
+                block = _parse_json_tool_call(m.group(1))
+                if block:
+                    blocks.append(block)
         # Some local models stream an opening <tool_call> wrapper and a
         # complete inner tool tag, but forget the closing </tool_call>.
         if not blocks:
@@ -834,6 +880,11 @@ def parse_tool_blocks(text: str, skip_fenced: bool = False) -> List[ToolBlock]:
                     block = _parse_xml_direct_tool(direct)
                     if block:
                         blocks.append(block)
+                if not blocks:
+                    block = _parse_json_tool_call(body)
+                    if block:
+                        blocks.append(block)
+                        break
         # Try bare <invoke> without wrapper
         if not blocks:
             for inv in _XML_INVOKE_RE.finditer(text):
